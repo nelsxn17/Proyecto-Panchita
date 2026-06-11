@@ -3,6 +3,8 @@ import './AdminDashboard.css';
 import GestionMesas from './GestionMesas'; 
 import GestorReservas from './GestorReservas';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import GestionDelivery from './Gestiondelibery';
+
 
 export default function AdminDashboard({ usuarioLogueado, onLogout }) { 
   const [seccionActiva, setSeccionActiva] = useState('panel'); 
@@ -91,9 +93,14 @@ export default function AdminDashboard({ usuarioLogueado, onLogout }) {
           >
             🚪 Abrir Salas
           </button>
+              <button 
+            className={`menu-item ${seccionActiva === 'delivery' ? 'active' : ''}`}
+            onClick={() => setSeccionActiva('delivery')}
+          >
+            🛵 Delivery
+          </button>
           <button className="menu-item disabled-tab">📋 Historial</button>
           <button className="menu-item disabled-tab">🚗 Estacionamiento</button>
-          <button className="menu-item disabled-tab">🛵 Delivery</button>
           <button className="menu-item disabled-tab">🍳 Platos / Carta</button>
           <button className="menu-item disabled-tab">📊 Reportes</button>
         </nav>
@@ -223,6 +230,8 @@ export default function AdminDashboard({ usuarioLogueado, onLogout }) {
 
           {seccionActiva === 'salas' && <GestionMesas />}
           {seccionActiva === 'reservas' && <GestorReservas />}
+          {seccionActiva === 'delivery' && <GestionDelivery />}
+
         </div>
       </main>
     </div>
