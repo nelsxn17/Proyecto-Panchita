@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 import './ModalPago.css'; 
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, onConfirmar }) {
-  // Estado para capturar el número de operación de Yape/Plin
   const [codigoOperacion, setCodigoOperacion] = useState('');
-  // Estado para simular la carga/procesamiento del pago
+  
+  const [tarjetaNumero, setTarjetaNumero] = useState('');
+  const [tarjetaExpiracion, setTarjetaExpiracion] = useState('');
+  const [tarjetaCvv, setTarjetaCvv] = useState('');
+
   const [procesando, setProcesando] = useState(false);
 
-  // Si el modal está cerrado, no renderiza nada
   if (!isOpen) return null;
 
   const manejarEnvioPago = (e) => {
     e.preventDefault();
     setProcesando(true);
 
-    // Simulamos un retraso de red de 1.5 segundos para que parezca una pasarela real
     setTimeout(() => {
       setProcesando(false);
 
-      // Estructuramos la respuesta según el método elegido
       let respuestaPago = {
         codigoOperacion: 'EFECTIVO-LOCAL',
         estadoPago: 'PENDIENTE'
@@ -36,9 +37,11 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
         };
       }
 
-      // Devolvemos los datos al formulario padre y limpiamos el estado
       onConfirmar(respuestaPago);
       setCodigoOperacion('');
+      setTarjetaNumero('');
+      setTarjetaExpiracion('');
+      setTarjetaCvv('');
     }, 1500);
   };
 
@@ -46,7 +49,6 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
     <div className="modal-pago-overlay">
       <div className="modal-pago-card animate-slide-down">
         
-        {/* Cabecera del Modal */}
         <div className="modal-pago-header">
           <h3>🔒 Procesar Garantía de Reserva</h3>
           <button type="button" className="btn-cerrar-modal" onClick={onClose} disabled={procesando}>
@@ -54,7 +56,6 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
           </button>
         </div>
 
-        {/* Cuerpo del Formulario del Modal */}
         <form onSubmit={manejarEnvioPago} className="modal-pago-body">
           
           <div className="alerta-monto-garntia">
@@ -63,60 +64,87 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
           </div>
 
           {/* CASO 1: YAPE O PLIN */}
-{(metodoPago === 'yape_plin' || metodoPago === 'Yape/Plin') && (
-  <div className="contenedor-metodo-especifico">
-    <span className="badge-metodo badge-yape">Yape / Plin</span>
-    <p className="instrucciones-pago">
-      Escanea este QR para transferir tu garantía al <strong>987 654 321</strong>.
-    </p>
-    
-    {/* 🌟 INTEGRACIÓN DINÁMICA DEL QR */}
-    <div className="qr-box">
-      <img 
-        src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=987654321" 
-        alt="QR La Panchita" 
-        className="img-qr-dinamico" 
-      />
-    </div>
+          {(metodoPago === 'yape_plin' || metodoPago === 'Yape/Plin') && (
+            <div className="contenedor-metodo-especifico">
+              <span className="badge-metodo badge-yape">Yape / Plin</span>
+              <p className="instrucciones-pago">
+                Escanea este QR para transferir tu garantía al <strong>987 654 321</strong>.
+              </p>
+      
+              {/* 🔄 REEMPLAZADO POR GENERADOR NATIVO LOCAL */}
+              <div className="qr-box" style={{ display: 'flex', justifyContent: 'center', margin: '15px 0' }}>
+                <QRCodeSVG 
+                  value="https://panchita.pe" 
+                  size={200}
+                  bgColor={"#ffffff"}
+                  fgColor={"#000000"}
+                  level={"L"}
+                  includeMargin={true}
+                />
+              </div>
 
-    <div className="grupo-input-modal">
-      <label>Ingresa el Número de Operación:</label>
-      <input 
-        type="text" 
-        placeholder="Ej: 485932" 
-        required 
-        value={codigoOperacion}
-        onChange={(e) => setCodigoOperacion(e.target.value)}
-        disabled={procesando}
-      />
-    </div>
-  </div>
-)}
+              <div className="grupo-input-modal">
+                <label>Ingresa el Número de Operación:</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: 485932" 
+                  required 
+                  value={codigoOperacion}
+                  onChange={(e) => setCodigoOperacion(e.target.value)}
+                  disabled={procesando}
+                />
+              </div>
+            </div>
+          )}
 
           {/* CASO 2: TARJETA DE CRÉDITO O DÉBITO */}
           {(metodoPago === 'tarjeta' || metodoPago === 'Tarjeta') && (
-           <div className="contenedor-metodo-especifico">
-  <span className="badge-metodo badge-yape">Yape / Plin</span>
-  <p className="instrucciones-pago">
-    Escanea el código QR desde tu app o transfiere al <strong>987 654 321</strong>.
-  </p>
-  
-  {/* Aquí va tu imagen del QR */}
-  <div className="qr-box">
-    <img src="/ruta-a-tu-imagen-qr.png" alt="QR La Panchita" className="img-qr-dinamico" />
-  </div>
+            <div className="contenedor-metodo-especifico">
+              <span className="badge-metodo badge-tarjeta">Tarjeta de Crédito / Débito</span>
+              <p className="instrucciones-pago">
+                Introduce los datos de tu tarjeta de forma segura para procesar la transacción.
+              </p>
+              
+              <div className="grupo-input-modal">
+                <label>Número de Tarjeta:</label>
+                <input 
+                  type="text" 
+                  placeholder="0000 0000 0000 0000" 
+                  maxLength="16"
+                  required 
+                  value={tarjetaNumero}
+                  onChange={(e) => setTarjetaNumero(e.target.value)}
+                  disabled={procesando}
+                />
+              </div>
 
-  <div className="grupo-input-modal">
-    <label>Número de Operación (Transacción):</label>
-    <input 
-      type="text" 
-      placeholder="Ej: 485932" 
-      required 
-      value={codigoOperacion}
-      onChange={(e) => setCodigoOperacion(e.target.value)}
-    />
-  </div>
-</div>
+              <div className="fila-inputs-modal" style={{ display: 'flex', gap: '10px' }}>
+                <div className="grupo-input-modal" style={{ flex: 1 }}>
+                  <label>Expiración:</label>
+                  <input 
+                    type="text" 
+                    placeholder="MM/AA" 
+                    maxLength="5"
+                    required 
+                    value={tarjetaExpiracion}
+                    onChange={(e) => setTarjetaExpiracion(e.target.value)}
+                    disabled={procesando}
+                  />
+                </div>
+                <div className="grupo-input-modal" style={{ flex: 1 }}>
+                  <label>CVC / CVV:</label>
+                  <input 
+                    type="password" 
+                    placeholder="123" 
+                    maxLength="4"
+                    required 
+                    value={tarjetaCvv}
+                    onChange={(e) => setTarjetaCvv(e.target.value)}
+                    disabled={procesando}
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           {/* CASO 3: EFECTIVO */}
@@ -125,7 +153,7 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
               <span className="badge-metodo badge-efectivo">Pago Presencial</span>
               <h4>⚠️ Política de Espera Obligatoria</h4>
               <p>
-                No necesitas pagar ahora en la web. Abonarás los <strong>S/ {montoGarantia.toFixed(2)}</strong> directamete en la caja del restaurante cuando te presentes.
+                No necesitas pagar ahora en la web. Abonarás los <strong>S/ {montoGarantia.toFixed(2)}</strong> directamente en la caja del restaurante cuando te presentes.
               </p>
               <div className="nota-advertencia-efectivo">
                 <strong>Importante:</strong> Tu mesa asignada se reservará por un margen de <strong>15 minutos de tolerancia</strong> respecto a tu hora elegida. Pasado ese tiempo, el sistema liberará la mesa automáticamente de manera operativa.
@@ -133,7 +161,6 @@ export default function ModalPago({ isOpen, onClose, metodoPago, montoGarantia, 
             </div>
           )}
 
-          {/* Acciones de Control Inferiores */}
           <div className="modal-pago-foot-actions">
             <button 
               type="button" 

@@ -1,6 +1,7 @@
 package com.example.panchita_api.model;
 
 import javax.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // Importante para evitar errores
 
 @Entity
 @Table(name = "mesas")
@@ -12,6 +13,16 @@ public class Mesa {
 
     @Column(name = "sala_id", nullable = false)
     private Integer salaId; // 👈 Cambiado de Long a Integer
+
+    // --- AGREGA ESTO AQUÍ ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sala_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Sala sala;
+
+    @ManyToOne
+@JoinColumn(name = "reserva_id") // Asegúrate que la mesa tenga esta columna
+private Reserva reserva;
 
     @Column(nullable = false, length = 10)
     private String numero;
@@ -27,6 +38,10 @@ public class Mesa {
 
     // Constructor vacío exigido por JPA
     public Mesa() {}
+
+    public Sala getSala() {
+        return sala;
+    }
 
     // Getters y Setters Actualizados
     public Integer getId() { return id; }
