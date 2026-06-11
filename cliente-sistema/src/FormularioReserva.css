@@ -331,6 +331,7 @@
   flex-direction: column;
   gap: 8px;
   margin-bottom: 18px; /* Separación fija y compacta entre inputs */
+  overflow: visible;
 }
 
 .input-reserva-premium label {

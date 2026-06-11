@@ -155,4 +155,43 @@ public class MapaSalonController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+    // ... dentro de MapaSalonController
+
+@GetMapping("/mesas-disponibilidad-dinamica") // Nuevo endpoint sugerido
+public ResponseEntity<?> getMesasConDisponibilidadReal(
+    @RequestParam LocalDate fecha, 
+    @RequestParam LocalTime hora) {
+    
+    LocalTime fin = hora.plusMinutes(90); // Rango de 90 min
+    
+    // Obtener todas las mesas
+    List<Object[]> filas = entityManager.createNativeQuery(
+        "SELECT m.id, m.numero, m.capacidad FROM mesas m"
+    ).getResultList();
+
+    List<Map<String, Object>> resultado = new ArrayList<>();
+    
+    for (Object[] fila : filas) {
+        Long id = ((Number) fila[0]).longValue();
+        
+        // AQUÍ ESTÁ LA MAGIA: Consultamos si hay solapamiento en RESERVAS
+        // Nota: Asegúrate de tener acceso a un repositorio o usar un Query aquí
+        boolean estaOcupada = (long) entityManager.createNativeQuery(
+            "SELECT COUNT(*) FROM reservas r WHERE r.mesa_id = :id AND r.fecha = :fecha " +
+            "AND r.hora BETWEEN :inicio AND :fin AND r.estado_reserva != 'cancelada'"
+        )
+        .setParameter("id", id)
+        .setParameter("fecha", fecha)
+        .setParameter("inicio", hora)
+        .setParameter("fin", fin)
+        .getSingleResult() > 0;
+
+        Map<String, Object> mesa = new LinkedHashMap<>();
+        mesa.put("id", id);
+        mesa.put("numero", fila[1]);
+        mesa.put("estado", estaOcupada ? "ocupada" : "disponible"); // <--- Sobrescribimos el estado
+        resultado.add(mesa);
+    }
+    return ResponseEntity.ok(resultado);
+}
 }

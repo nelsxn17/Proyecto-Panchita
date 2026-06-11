@@ -7,9 +7,11 @@ const ESTADOS = {
   reservada:  { label: 'Reservada',  clase: 'mesa-reservada', icono: '◑' },
   bloqueada:  { label: 'Bloqueada',  clase: 'mesa-bloqueada', icono: '✕' },
 };
+
 const normalizarEstado = (estado) => {
   if (!estado) return 'disponible';
   const e = estado.toLowerCase();
+  if (e === 'libre') return 'disponible'; 
   return ESTADOS[e] ? e : 'disponible';
 };
 
@@ -18,17 +20,11 @@ const minutosOcupada = (fechaOcupacion) => {
   return Math.floor((Date.now() - new Date(fechaOcupacion).getTime()) / 60000);
 };
 
-// Normaliza el nombre de sala para comparar sin importar tildes ni mayúsculas
 const normalizarSala = (nombre) => {
   if (!nombre) return '';
   return nombre.toString().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .trim();
-};
-
-const SALAS_CONFIG = {
-  principal: { label: 'Sala Principal', icono: '🏠', color: 'sala-principal' },
-  terraza:   { label: 'Terraza',        icono: '☀️',  color: 'sala-terraza'   },
 };
 
 // ─── Componente principal ────────────────────────────────────────────────────
@@ -37,62 +33,108 @@ export default function MapaSalon({ onAlerta }) {
   const [cargando, setCargando]     = useState(true);
   const [mesaActiva, setMesaActiva] = useState(null);
   const [filtro, setFiltro]         = useState('TODAS');
-  const [salaActiva, setSalaActiva] = useState('todas'); // 'todas' | 'principal' | 'terraza'
+  const [salaActiva, setSalaActiva] = useState('todas'); 
 
+    // Cambia el split('T') agregándole el [0] al final
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [hora, setHora]   = useState(new Date().toTimeString().split(':').slice(0, 2).join(':'));
+
 
   const cargarMesas = useCallback(() => {
     setCargando(true);
     fetch(`http://localhost:8080/api/mesas/disponibilidad?fecha=${fecha}&hora=${hora}`)
-      .then(r => r.json())
-      .then(data => { setMesas(Array.isArray(data) ? data : []); setCargando(false); })
-      .catch(() => setCargando(false));
+      .then(r => {
+        if (!r.ok) throw new Error('Error de conexión');
+        return r.json();
+      })
+      .then(data => { 
+        setMesas(Array.isArray(data) ? data : []); 
+        setCargando(false); 
+      })
+      .catch((err) => {
+        console.error("Error al refrescar plano administrador:", err);
+        setCargando(false);
+      });
   }, [fecha, hora]);
 
   useEffect(() => { cargarMesas(); }, [cargarMesas]);
 
-  // Auto-refresh cada 60 segundos
+  // Auto-refresh automático cada 60 segundos
   useEffect(() => {
     const interval = setInterval(cargarMesas, 60000);
     return () => clearInterval(interval);
   }, [cargarMesas]);
 
+  // Sincroniza la información del modal si las mesas cambian en segundo plano
+  useEffect(() => {
+    if (mesaActiva) {
+      const mesaActualizada = mesas.find(m => m.id === mesaActiva.id);
+      if (mesaActualizada) setMesaActiva(mesaActualizada);
+    }
+  }, [mesas]);
+
   // ── Filtrado ──────────────────────────────────────────────────────────────
   const mesasFiltradas = mesas.filter(m => {
-    const matchEstado = filtro === 'TODAS' || normalizarEstado(m.estado) === filtro;
+    const matchEstado = filtro === 'TODAS' || normalizarEstado(m.estado) === filtro.toLowerCase();
     const salaKey     = normalizarSala(m.salaNombre || '');
-    const matchSala   = salaActiva === 'todas' || salaKey === salaActiva;
+    
+    const esPrincipal = salaKey === 'principal' || salaKey === 'sala principal' || m.salaId === 1;
+    const esTerraza   = salaKey === 'terraza' || m.salaId === 2;
+
+    let matchSala = false;
+    if (salaActiva === 'todas') matchSala = true;
+    else if (salaActiva === 'principal' && esPrincipal) matchSala = true;
+    else if (salaActiva === 'terraza' && esTerraza) matchSala = true;
+
     return matchEstado && matchSala;
   });
 
-const mesasPorSala = {
-  principal: mesasFiltradas.filter(m => 
-    normalizarSala(m.salaNombre) === 'principal' || m.sala_id === 1
-  ),
-  terraza: mesasFiltradas.filter(m => 
-    normalizarSala(m.salaNombre) === 'Terraza' || m.sala_id === 2
-  ),
-  otras: mesasFiltradas.filter(m => {
-    const s = normalizarSala(m.salaNombre || '');
-    return s !== 'principal' && s !== 'Terraza';
-  }),
-};
-
-  const conteo = {
-    LIBRE:     mesas.filter(m => normalizarEstado(m.estado) === 'LIBRE').length,
-    OCUPADA:   mesas.filter(m => normalizarEstado(m.estado) === 'OCUPADA').length,
-    RESERVADA: mesas.filter(m => normalizarEstado(m.estado) === 'RESERVADA').length,
-    BLOQUEADA: mesas.filter(m => normalizarEstado(m.estado) === 'BLOQUEADA').length,
+  const mesasPorSala = {
+    principal: mesasFiltradas.filter(m => normalizarSala(m.salaNombre) === 'principal' || normalizarSala(m.salaNombre) === 'sala principal' || m.salaId === 1),
+    terraza:   mesasFiltradas.filter(m => normalizarSala(m.salaNombre) === 'terraza' || m.salaId === 2),
+    otras:     mesasFiltradas.filter(m => {
+      const s = normalizarSala(m.salaNombre || '');
+      return s !== 'principal' && s !== 'sala principal' && s !== 'terraza' && m.salaId !== 1 && m.salaId !== 2;
+    }),
   };
 
-  // ── Marcar "Asistió" desde Reservas → pone mesa en OCUPADA ───────────────
+  // 🌟 CORREGIDO: Conteos mapeados exactamente en minúsculas
+  const conteo = {
+    disponible: mesas.filter(m => normalizarEstado(m.estado) === 'disponible').length,
+    ocupada:    mesas.filter(m => normalizarEstado(m.estado) === 'ocupada').length,
+    reservada:  mesas.filter(m => normalizarEstado(m.estado) === 'reservada').length,
+    bloqueada:  mesas.filter(m => normalizarEstado(m.estado) === 'bloqueada').length,
+  };
+
+  // ── Marcar "Asistió" desde Reservas → Pone mesa en OCUPADA ───────────────
   const marcarMesaOcupada = (mesaId) => {
     fetch(`http://localhost:8080/api/mesas/${mesaId}/estado`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: 'OCUPADA' }),
+      body: JSON.stringify({ estado: 'ocupada' }),
     }).then(() => cargarMesas()).catch(console.error);
+  };
+
+  // 🌟 NUEVA ACCIÓN: Petición PUT para finalizar la reserva y liberar la mesa en la BD
+  const liberarMesaManual = (reservaId) => {
+    if (!reservaId) {
+      alert("No se encontró ningún ID de reserva asociado a esta mesa.");
+      return;
+    }
+    fetch(`http://localhost:8080/api/reservas/${reservaId}/finalizar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("No se pudo conectar con el endpoint de finalización.");
+      alert("¡Mesa liberada correctamente! La reserva pasó a estado 'finalizada'.");
+      setMesaActiva(null); // Cierra el modal automáticamente
+      cargarMesas();       // Vuelve a pintar el mapa con la mesa en verde
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Error al intentar liberar la mesa.");
+    });
   };
 
   return (
@@ -203,6 +245,7 @@ const mesasPorSala = {
           onCerrar={() => setMesaActiva(null)}
           onActualizar={cargarMesas}
           onMarcarOcupada={marcarMesaOcupada}
+          onLiberarReserva={liberarMesaManual}
         />
       )}
     </div>
@@ -375,24 +418,56 @@ function ModalMesa({ mesa, onCerrar, onActualizar, onMarcarOcupada }) {
           )}
         </div>
 
-        {/* Cambiar estado */}
-<div className="modal-acciones">
-  <p className="modal-acciones-titulo">Cambiar estado:</p>
-  <div className="modal-acciones-grid">
-    {Object.entries(ESTADOS)
-      // Filtramos para no mostrar el botón del estado en el que ya está la mesa
-      .filter(([key]) => key !== estadoKey)
-      .map(([key, val]) => (
-        <button
-          key={key}
-          className={`btn-estado btn-estado-${key.toLowerCase()}`}
-          onClick={() => cambiarEstado(key)} 
-        >
-          {val.icono} {val.label}
-        </button>
-      ))}
-  </div>
-</div>
+              {/* Cambiar estado */}
+        <div className="modal-acciones">
+          <p className="modal-acciones-titulo">Cambiar estado:</p>
+          <div className="modal-acciones-grid">
+            {Object.entries(ESTADOS)
+              // Filtramos para no mostrar el botón del estado en el que ya está la mesa
+              .filter(([key]) => key !== estadoKey)
+              .map(([key, val]) => (
+                <button
+                  key={key}
+                  className={`btn-estado btn-estado-${key.toLowerCase()}`}
+                  onClick={() => {
+                    // 🌟 INTERCEPTAMOS SI EL BOTÓN PRESIONADO ES "DISPONIBLE" Y HAY RESERVA ACTIVA
+                    if (key === 'disponible' && mesa.reservaId) {
+                      
+                      fetch(`http://localhost:8080/api/reservas/${mesa.reservaId}/finalizar`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' }
+                      })
+                      .then(async res => {
+                        // 🛡️ Capturamos el error 500 y leemos qué dice el backend en texto plano
+                        if (!res.ok) {
+                          const textoError = await res.text();
+                          throw new Error(textoError || "Error interno del servidor");
+                        }
+                        return res.text();
+                      })
+                      .then(() => {
+                        alert("¡Mesa liberada con éxito! La reserva ha sido finalizada.");
+                        onActualizar(); // Recarga el mapa dinámico en tiempo real
+                        onCerrar();     // Cierra la ventana modal
+                      })
+                      .catch(err => {
+                        console.error("Detalle del fallo:", err.message);
+                        alert("No se pudo liberar: " + err.message);
+                      });
+
+                    } else {
+                      // Flujo normal para el resto de estados (Ocupada, Bloqueada)
+                      cambiarEstado(key);
+                    }
+                  }} 
+                >
+                  {val.icono} {val.label}
+                </button>
+              ))}
+          </div>
+        </div>
+
+
 
       </div>
     </div>

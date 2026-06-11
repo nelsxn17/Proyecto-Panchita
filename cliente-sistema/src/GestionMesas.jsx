@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './GestionMesas.css';
 import { MesaPlano } from './MesaPlano';
 import './MesaPlano.css';
@@ -8,37 +8,35 @@ export default function GestionMesas() {
   const [nuevaSala, setNuevaSala] = useState({ nombre: '', capacidadTotal: 50, descripcion: '' });
   const [mensajeSala, setMensajeSala] = useState({ texto: '', tipo: '' });
 
-  // --- ESTADOS PARA LAS MESAS OPERATIVAS ---
   const [mesasAdmin, setMesasAdmin] = useState([]);
   const [cargandoMesas, setCargandoMesas] = useState(false);
   const [nuevaMesa, setNuevaMesa] = useState({ salaId: '', numero: '', capacidad: 4, ubicacion: '' });
   const [mensajeMesa, setMensajeMesa] = useState({ texto: '', tipo: '' });
   const [guardandoMesa, setGuardandoMesa] = useState(false);
 
-  // Carga e inicializa la información consultando a la API
+  // --- NUEVOS ESTADOS PARA FILTRO Y BÚSQUEDA ---
+  const [filtroSalaId, setFiltroSalaId] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [mesaAEliminar, setMesaAEliminar] = useState(null); // { id, numero }
+
   const cargarInfraestructura = () => {
-        // 1. Obtener salas de la base de datos de forma ultra segura
     fetch('http://localhost:8080/api/salas')
       .then(res => {
         if (!res.ok) throw new Error('Ruta no encontrada o error en servidor');
         return res.json();
       })
       .then(data => {
-        // 🌟 PROTECCIÓN: Nos aseguramos de que siempre sea una lista [] para que no rompa el .map()
         const salasArreglo = Array.isArray(data) ? data : [];
         setSalas(salasArreglo);
-        
-        // 🌟 CORRECCIÓN DE ÍNDICE: Asignamos el ID de la primera sala encontrada de forma correcta
         if (salasArreglo.length > 0) {
           setNuevaMesa(prev => ({ ...prev, salaId: salasArreglo[0].id }));
         }
       })
       .catch(err => {
-        console.error("Error al recuperar las salas, protegiendo interfaz:", err);
-        setSalas([]); // 👈 Esto evita la pantalla negra si el backend responde mal
+        console.error("Error al recuperar las salas:", err);
+        setSalas([]);
       });
 
-    // 2. Obtener mesas de la base de datos
     setCargandoMesas(true);
     fetch('http://localhost:8080/api/mesas')
       .then(res => res.json())
@@ -56,14 +54,36 @@ export default function GestionMesas() {
     cargarInfraestructura();
   }, []);
 
-  // 🚀 CREAR NUEVA SALA (POST)
+  // --- ESTADÍSTICAS EN VIVO ---
+  const stats = useMemo(() => {
+    const libres    = mesasAdmin.filter(m => m.estado === 'disponible').length;
+    const ocupadas  = mesasAdmin.filter(m => m.estado === 'ocupada').length;
+    const reservadas = mesasAdmin.filter(m => m.estado === 'reservada').length;
+    const total = mesasAdmin.length;
+
+    const capacidadOcupada = mesasAdmin
+      .filter(m => m.estado === 'ocupada')
+      .reduce((acc, m) => acc + (m.capacidad || 0), 0);
+    const capacidadTotal = mesasAdmin.reduce((acc, m) => acc + (m.capacidad || 0), 0);
+
+    return { libres, ocupadas, reservadas, total, capacidadOcupada, capacidadTotal };
+  }, [mesasAdmin]);
+
+  // --- MESAS FILTRADAS (por sala + búsqueda) ---
+  const mesasFiltradas = useMemo(() => {
+    return mesasAdmin.filter(m => {
+      const coincideSala   = !filtroSalaId || String(m.salaId) === String(filtroSalaId);
+      const coincideBusqueda = !busqueda || String(m.numero).toLowerCase().includes(busqueda.toLowerCase());
+      return coincideSala && coincideBusqueda;
+    });
+  }, [mesasAdmin, filtroSalaId, busqueda]);
+
   const procesarRegistroSala = (e) => {
     e.preventDefault();
     if (!nuevaSala.nombre.trim()) {
       setMensajeSala({ texto: 'El nombre de la sala es obligatorio.', tipo: 'error' });
       return;
     }
-
     fetch('http://localhost:8080/api/salas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -79,50 +99,47 @@ export default function GestionMesas() {
       return res.json();
     })
     .then(data => {
-      setMensajeSala({ texto: `¡Área "${data.nombre}" inaugurada correctamente desde la web!`, tipo: 'exito' });
+      setMensajeSala({ texto: `Área "${data.nombre}" creada correctamente.`, tipo: 'exito' });
       setNuevaSala({ nombre: '', capacidadTotal: 50, descripcion: '' });
-      cargarInfraestructura(); // Recarga para que la sala aparezca abajo en el selector
+      cargarInfraestructura();
+      setTimeout(() => setMensajeSala({ texto: '', tipo: '' }), 4000);
     })
     .catch(() => setMensajeSala({ texto: 'Error de comunicación al intentar crear la sala.', tipo: 'error' }));
   };
 
-  // 🪑 CREAR NUEVA MESA (POST - Sincronizado perfectamente con tu Integer salaId de Java)
   const procesarRegistroMesa = (e) => {
     e.preventDefault();
     if (!nuevaMesa.numero.trim() || !nuevaMesa.salaId) {
       setMensajeMesa({ texto: 'Por favor, ingresa el identificador y selecciona una sala.', tipo: 'error' });
       return;
     }
-
     setGuardandoMesa(true);
     setMensajeMesa({ texto: '', tipo: '' });
-
-    // 🌟 CORRECCIÓN EXACTA: Enviamos la propiedad salaId plana de forma entera para tu backend
-    const payloadMesa = {
-      salaId: Number(nuevaMesa.salaId), // Hace match con tu "private Integer salaId" de Mesa.java
-      numero: nuevaMesa.numero,
-      capacidad: Number(nuevaMesa.capacidad),
-      estado: 'disponible',
-      ubicacion: nuevaMesa.ubicacion
-    };
 
     fetch('http://localhost:8080/api/mesas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadMesa)
+      body: JSON.stringify({
+        salaId: Number(nuevaMesa.salaId),
+        numero: nuevaMesa.numero,
+        capacidad: Number(nuevaMesa.capacidad),
+        estado: 'disponible',
+        ubicacion: nuevaMesa.ubicacion
+      })
     })
     .then(res => {
-      if (!res.ok) throw new Error('Fallo del servidor relacional');
+      if (!res.ok) throw new Error('Fallo del servidor');
       return res.json();
     })
     .then(data => {
-      setMensajeMesa({ texto: `¡Mesa ${data.numero} instalada con éxito en el sistema!`, tipo: 'exito' });
-      setNuevaMesa(prev => ({ ...prev, numero: '', ubicacion: '' })); // Limpia campos de texto
+      setMensajeMesa({ texto: `Mesa ${data.numero} instalada con éxito.`, tipo: 'exito' });
+      setNuevaMesa(prev => ({ ...prev, numero: '', ubicacion: '' }));
       setGuardandoMesa(false);
-      cargarInfraestructura(); // Dibuja el círculo en la pantalla
+      cargarInfraestructura();
+      setTimeout(() => setMensajeMesa({ texto: '', tipo: '' }), 4000);
     })
     .catch(() => {
-      setMensajeMesa({ texto: 'Fallo al guardar la mesa. Verifica las llaves foráneas de la base de datos.', tipo: 'error' });
+      setMensajeMesa({ texto: 'Fallo al guardar la mesa. Verifica la base de datos.', tipo: 'error' });
       setGuardandoMesa(false);
     });
   };
@@ -141,6 +158,30 @@ export default function GestionMesas() {
     .then(() => cargarInfraestructura())
     .catch(err => console.error(err));
   };
+
+  // --- NUEVA: ELIMINAR MESA ---
+  const confirmarEliminacion = (mesa) => {
+    setMesaAEliminar(mesa);
+  };
+
+  const ejecutarEliminacion = () => {
+    if (!mesaAEliminar) return;
+    fetch(`http://localhost:8080/api/mesas/${mesaAEliminar.id}`, { method: 'DELETE' })
+      .then(res => {
+        if (!res.ok) throw new Error('Error al eliminar');
+        cargarInfraestructura();
+        setMesaAEliminar(null);
+      })
+      .catch(err => {
+        console.error(err);
+        setMesaAEliminar(null);
+      });
+  };
+
+  const porcentajeOcupado = stats.capacidadTotal > 0
+    ? Math.round((stats.capacidadOcupada / stats.capacidadTotal) * 100)
+    : 0;
+
   return (
     <div className="management-box-view">
       <div className="view-header">
@@ -148,124 +189,183 @@ export default function GestionMesas() {
         <p>Registra las áreas de tu restaurante y gestiona el estado operativo de las mesas desde una interfaz unificada.</p>
       </div>
 
-      {/* 🌟 FORMULARIO SUPERIOR: INTERFAZ WEB PROFESIONAL PARA CREAR SALAS */}
-      <div className="form-container-premium" style={{ maxWidth: '100%', marginBottom: '25px' }}>
-        <h3>🏗️ Registrar Nueva Área / Sala del Restaurante</h3>
-        <form onSubmit={procesarRegistroSala} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      {/* FORMULARIO INLINE DE SALA */}
+      <div className="sala-form-card">
+        <h3>🏗️ Registrar nueva área / sala del restaurante</h3>
+        <form onSubmit={procesarRegistroSala} className="sala-inline-form">
           {mensajeSala.texto && (
-            <div className={`form-alert-message ${mensajeSala.tipo}`} style={{ width: '100%', padding: '10px' }}>
+            <div className={`form-alert-message ${mensajeSala.tipo}`} style={{ gridColumn: '1 / -1' }}>
               {mensajeSala.texto}
             </div>
           )}
-          
-          <div style={{ flex: '1', minWidth: '180px' }} className="premium-admin-form">
-            <label>Nombre de la Sala / Zona:</label>
-            <input 
-              type="text" 
-              value={nuevaSala.nombre} 
-              onChange={e => setNuevaSala({...nuevaSala, nombre: e.target.value})} 
-              placeholder="Ej: Salón Principal, Terraza, VIP" 
+          <div className="fg">
+            <label>Nombre de la sala / zona</label>
+            <input
+              type="text"
+              value={nuevaSala.nombre}
+              onChange={e => setNuevaSala({...nuevaSala, nombre: e.target.value})}
+              placeholder="Ej: Salón Principal, Terraza, VIP"
             />
           </div>
-          
-          <div style={{ width: '130px' }} className="premium-admin-form">
-            <label>Capacidad Total:</label>
-            <input 
-              type="number" 
-              value={nuevaSala.capacidadTotal} 
-              onChange={e => setNuevaSala({...nuevaSala, capacidadTotal: e.target.value})} 
+          <div className="fg fg--narrow">
+            <label>Capacidad total</label>
+            <input
+              type="number"
+              value={nuevaSala.capacidadTotal}
+              onChange={e => setNuevaSala({...nuevaSala, capacidadTotal: e.target.value})}
             />
           </div>
-          
-          <div style={{ flex: '1.5', minWidth: '200px' }} className="premium-admin-form">
-            <label>Descripción / Características:</label>
-            <input 
-              type="text" 
-              value={nuevaSala.descripcion} 
-              onChange={e => setNuevaSala({...nuevaSala, descripcion: e.target.value})} 
-              placeholder="Ej: Zona familiar con aire acondicionado" 
+          <div className="fg fg--wide">
+            <label>Descripción / características</label>
+            <input
+              type="text"
+              value={nuevaSala.descripcion}
+              onChange={e => setNuevaSala({...nuevaSala, descripcion: e.target.value})}
+              placeholder="Ej: Zona familiar con aire acondicionado"
             />
           </div>
-          
-          <button type="submit" className="btn-submit-premium" style={{ width: 'auto', padding: '12px 25px', margin: '0' }}>
-            ➕ Crear Sala
+          <button type="submit" className="btn-submit-premium btn-inline">
+            + Crear sala
           </button>
         </form>
       </div>
 
-      {/* SECCIÓN INFERIOR DE DOBLE LAYOUT */}
+      {/* LAYOUT DOBLE */}
       <div className="dashboard-double-layout">
-        
-        {/* COLUMNA IZQUIERDA: EL MAPA EN VIVO DEL SALÓN */}
-        <div className="analytics-main-box" style={{ flex: '1.2' }}>
-          <h3>Mapa Operativo del Salón</h3>
-          <p className="instruction-text" style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '15px' }}>
-            Haz clic sobre cualquier círculo para alternar su estado operacional (Libre 🟢 ➔ Ocupada 🔴 ➔ Reservada 🟡).
-          </p>
-          
-          <div className="mesas-operativas-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '20px', width: '100%', marginTop: '15px' }}>
+
+        {/* COLUMNA IZQUIERDA: MAPA */}
+        <div className="analytics-main-box">
+          <span className="section-label">Mapa operativo del salón</span>
+
+          {/* ESTADÍSTICAS EN VIVO */}
+          <div className="stats-summary">
+            <div className="stat-item libres">
+              <div className="stat-label">Libres</div>
+              <div className="stat-value">{stats.libres}</div>
+            </div>
+            <div className="stat-item ocupadas">
+              <div className="stat-label">Ocupadas</div>
+              <div className="stat-value">{stats.ocupadas}</div>
+            </div>
+            <div className="stat-item reservadas">
+              <div className="stat-label">Reservadas</div>
+              <div className="stat-value">{stats.reservadas}</div>
+            </div>
+            <div className="stat-item total">
+              <div className="stat-label">Total</div>
+              <div className="stat-value">{stats.total}</div>
+            </div>
+          </div>
+
+          {/* BARRA DE CAPACIDAD */}
+          {stats.capacidadTotal > 0 && (
+            <div className="capacidad-bar-wrap">
+              <div className="capacidad-bar-header">
+                <span>Capacidad ocupada</span>
+                <span>{stats.capacidadOcupada} / {stats.capacidadTotal} comensales · {porcentajeOcupado}%</span>
+              </div>
+              <div className="capacidad-bar-track">
+                <div
+                  className="capacidad-bar-fill"
+                  style={{ width: `${porcentajeOcupado}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* FILTRO POR SALA + BÚSQUEDA */}
+          <div className="mapa-toolbar">
+            <select
+              value={filtroSalaId}
+              onChange={e => setFiltroSalaId(e.target.value)}
+              className="toolbar-select"
+            >
+              <option value="">Todas las salas</option>
+              {salas.map(s => (
+                <option key={s.id} value={s.id}>{s.nombre} (ID: {s.id})</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              className="toolbar-search"
+              placeholder="Buscar por N° de mesa..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+          </div>
+
+          {/* LEYENDA */}
+          <div className="mesas-leyenda">
+            <div className="leyenda-item"><div className="leyenda-dot libre" />Libre</div>
+            <div className="leyenda-item"><div className="leyenda-dot ocupada" />Ocupada</div>
+            <div className="leyenda-item"><div className="leyenda-dot reservada" />Reservada</div>
+            <span className="leyenda-hint">Clic para cambiar estado · hover para eliminar</span>
+          </div>
+
+          {/* GRID DE MESAS */}
+          <div className="mesas-operativas-panel">
             {cargandoMesas ? (
-              <div style={{ color: '#64748b' }}>Consultando distribución con el servidor...</div>
-            ) : mesasAdmin.length === 0 ? (
-              <div style={{ gridColumn: '1/-1', padding: '25px', background: '#f8fafc', borderRadius: '8px', color: '#64748b', textAlign: 'center' }}>
-                No hay mobiliario registrado en la base de datos. Utiliza el panel superior para crear un área y luego añade tus mesas.
+              <div className="loading-text">Consultando distribución con el servidor...</div>
+            ) : mesasFiltradas.length === 0 ? (
+              <div className="empty-state-panel">
+                {mesasAdmin.length === 0
+                  ? 'No hay mobiliario registrado. Crea un área y luego añade tus mesas.'
+                  : 'Ninguna mesa coincide con el filtro aplicado.'}
               </div>
             ) : (
-              mesasAdmin.map((mesa) => (
-  <MesaPlano
-    key={mesa.id}
-    mesa={mesa}
-    onClick={alternarEstadoMesa}
-  />
-))
+              mesasFiltradas.map((mesa) => (
+                <MesaPlano
+                  key={mesa.id}
+                  mesa={mesa}
+                  onClick={alternarEstadoMesa}
+                  onDelete={confirmarEliminacion}
+                />
+              ))
             )}
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: FORMULARIO DE INSTALACIÓN DE MESAS CON CONTROL RELACIONAL REAL */}
-        <div className="form-container-premium" style={{ flex: '1', marginTop: '0' }}>
-          <h3>🪑 Instalar Nueva Mesa</h3>
+        {/* COLUMNA DERECHA: FORMULARIO */}
+        <div className="form-container-premium">
+          <span className="section-label">Instalar nueva mesa</span>
           <form onSubmit={procesarRegistroMesa} className="premium-admin-form">
             {mensajeMesa.texto && (
               <div className={`form-alert-message ${mensajeMesa.tipo}`}>
                 {mensajeMesa.texto}
               </div>
             )}
-            
+
             <div className="form-group-row">
-              <label>Seleccionar Área de Destino (Cargadas de la BD):</label>
-              <select 
-                name="salaId" 
-                value={nuevaMesa.salaId} 
+              <label>Seleccionar área de destino</label>
+              <select
+                value={nuevaMesa.salaId}
                 onChange={e => setNuevaMesa({...nuevaMesa, salaId: e.target.value})}
               >
                 {salas.length === 0 ? (
-                  <option value="">⚠️ Registra primero una sala en el formulario superior</option>
+                  <option value="">⚠️ Registra primero una sala</option>
                 ) : (
                   salas.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} (ID: {s.id})
-                    </option>
+                    <option key={s.id} value={s.id}>{s.nombre} (ID: {s.id})</option>
                   ))
                 )}
               </select>
             </div>
 
             <div className="form-group-row">
-              <label>Código o Número de Mesa:</label>
-              <input 
-                type="text" 
-                value={nuevaMesa.numero} 
-                onChange={e => setNuevaMesa({...nuevaMesa, numero: e.target.value})} 
-                placeholder="Ej: 02" 
-                maxLength={10} 
+              <label>Código o número de mesa</label>
+              <input
+                type="text"
+                value={nuevaMesa.numero}
+                onChange={e => setNuevaMesa({...nuevaMesa, numero: e.target.value})}
+                placeholder="Ej: 02"
+                maxLength={10}
               />
             </div>
 
             <div className="form-group-row">
-              <label>Capacidad Máxima de Comensales:</label>
-              <select 
-                value={nuevaMesa.capacidad} 
+              <label>Capacidad máxima de comensales</label>
+              <select
+                value={nuevaMesa.capacidad}
                 onChange={e => setNuevaMesa({...nuevaMesa, capacidad: Number(e.target.value)})}
               >
                 <option value={2}>2 Personas (Mesa Pequeña)</option>
@@ -275,26 +375,39 @@ export default function GestionMesas() {
             </div>
 
             <div className="form-group-row">
-              <label>Ubicación Específica (Opcional):</label>
-              <input 
-                type="text" 
-                value={nuevaMesa.ubicacion} 
-                onChange={e => setNuevaMesa({...nuevaMesa, ubicacion: e.target.value})} 
-                placeholder="Ej: Junto a la ventana principal" 
+              <label>Ubicación específica (Opcional)</label>
+              <input
+                type="text"
+                value={nuevaMesa.ubicacion}
+                onChange={e => setNuevaMesa({...nuevaMesa, ubicacion: e.target.value})}
+                placeholder="Ej: Junto a la ventana principal"
               />
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-submit-premium" 
+            <button
+              type="submit"
+              className="btn-submit-premium"
               disabled={guardandoMesa || salas.length === 0}
             >
-              {guardandoMesa ? 'Procesando en MySQL...' : '➕ Dar de Alta Mesa'}
+              {guardandoMesa ? 'Guardando...' : '+ Dar de alta mesa'}
             </button>
           </form>
         </div>
-
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      {mesaAEliminar && (
+        <div className="modal-overlay" onClick={() => setMesaAEliminar(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h4>Eliminar mesa {mesaAEliminar.numero}</h4>
+            <p>Esta acción no se puede deshacer. ¿Confirmas que deseas eliminar esta mesa del sistema?</p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setMesaAEliminar(null)}>Cancelar</button>
+              <button className="btn-danger" onClick={ejecutarEliminacion}>Sí, eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
