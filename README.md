@@ -4,12 +4,12 @@ Sistema integral de gestión de reservas de restaurante. Este proyecto sigue una
 
 ## Arquitectura del Proyecto
 - **Backend:** Java con Spring Boot.
-- **Frontend:** React.js (ubicado en `/cliente-sistema`).
+- **Frontend:** React.js 
 - **Persistencia:** MySQL gestionado a través de Spring Data JPA.
 
 ## Estructura de Directorios
 - `/panchita-api`: Lógica del servidor, controladores REST, modelos y repositorios.
-- `/cliente-sistema`: Interfaz gráfica desarrollada en React.
+- `/cliente-sistema y administrador`: Interfaz gráfica desarrollada en React.
 
 ## Funcionalidades Implementadas
 - **Gestión de Reservas:** CRUD completo (Crear, Leer, Actualizar, Borrar).
