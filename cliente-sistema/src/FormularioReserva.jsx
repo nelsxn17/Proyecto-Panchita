@@ -142,26 +142,32 @@ const procesarEnvioReserva = (e) => {
     const usuarioActual = usuarioLogueado || JSON.parse(localStorage.getItem('usuarioLogueado'));
     
     if (!usuarioActual || !usuarioActual.id) {
-        alert("Sesión no válida.");
+        alert("Sesión no válida o expirada. Por favor, vuelve a iniciar sesión.");
         return; 
     }
 
-    // DECLARA EL PAYLOAD UNA SOLA VEZ
+    // 🛡️ SEGURO: Validar que realmente haya una mesa seleccionada en el estado de React
+    if (!mesaSeleccionada || !mesaSeleccionada.id) {
+        alert("Por favor, selecciona una mesa en el mapa antes de continuar.");
+        return;
+    }
+
+    // Estructura limpia y tipada explícitamente para JPA
     const payloadReserva = {
-        usuario: { id: usuarioActual.id }, 
-        mesa: { id: mesaSeleccionada.id },
+        usuario: { id: Number(usuarioActual.id) }, 
+        mesa: { id: Number(mesaSeleccionada.id) },
         fecha: datosForm.fecha,
         hora: datosForm.hora.length === 5 ? datosForm.hora + ":00" : datosForm.hora, 
         capacidad: Number(datosForm.capacidad),
         codigoReserva: generarCodigoReserva(),
-        metodoPago: datosForm.metodoPago.toLowerCase().includes('efectivo') ? 'efectivo' : 'tarjeta',
+        metodoPago: datosForm.metodoPago.toLowerCase().includes('efectivo') ? 'efectivo' : datosForm.metodoPago.toLowerCase(),
         estadoPago: datosForm.metodoPago.toLowerCase().includes('efectivo') ? 'pendiente' : 'pagado',    
         estadoReserva: "confirmada", 
         estacionamiento: Number(datosForm.estacionamiento),
-        precio: precioFijo
+        precio: Number(precioFijo)
     };
 
-    // USA EL MISMO PAYLOAD PARA AMBAS LÓGICAS
+    // Control del flujo del Modal de Pago
     if (payloadReserva.metodoPago === 'efectivo') {
         ejecutarPeticionBackend(payloadReserva);
     } else {
@@ -169,6 +175,7 @@ const procesarEnvioReserva = (e) => {
         setMostrarModalPago(true);
     }
 };
+
 
   // 🌟 CALLBACK PARA EL MODAL DE PAGO EXITOSO
   const manejarPagoExitoso = () => {
@@ -282,20 +289,24 @@ const procesarEnvioReserva = (e) => {
               required 
               value={datosForm.fecha} 
               onChange={manejarCambioInput} 
-              min={new Date().toISOString().split('T')[0]} 
+              min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]} 
             />
           </div>
 
           <div className="input-reserva-premium">
-            <label>Hora / Turno disponible</label>
-            <select name="hora" required value={datosForm.hora} onChange={manejarCambioInput}>
-              <option value="">Seleccione una hora</option>
-              <option value="12:30">12:30 PM (Almuerzo)</option>
-              <option value="13:30">01:30 PM (Almuerzo)</option>
-              <option value="19:30">07:30 PM (Cena)</option>
-              <option value="21:00">09:00 PM (Cena)</option>
-            </select>
-          </div>
+  <label htmlFor="hora">Hora de la reserva</label>
+  <input
+    type="time"
+    name="hora"
+    required
+    value={datosForm.hora}
+    onChange={manejarCambioInput}
+    // Opcional: Esto limita la selección entre las 12:00 y las 23:59
+    min="12:00"
+    max="23:59"
+    className="input-hora-estilo"
+  />
+</div>
 
           <div className="input-reserva-premium">
             <label>Cantidad de Acompañantes</label>
@@ -348,26 +359,40 @@ const procesarEnvioReserva = (e) => {
     </div>
    {/* ── 💳 INTEGRACIÓN CONDICIONAL DEL MODAL DE PAGO ── */}
    {mostrarModalPago && (
-      <ModalPago 
-        isOpen={mostrarModalPago}           
-        montoGarantia={precioFijo}         
-        metodoPago={datosForm.metodoPago}   
-        onClose={() => {
-          setMostrarModalPago(false);
-          setPayloadTemporal(null);
-        }}
-        onConfirmar={(respuestaPasarela) => {
-          const payloadFinal = {
-            ...payloadTemporal,
-            estadoPago: respuestaPasarela.estadoPago.toLowerCase(),
-            codigoReserva: respuestaPasarela.codigoOperacion !== 'EFECTIVO-LOCAL' && respuestaPasarela.codigoOperacion !== 'YAPE-MOCK'
-                           ? respuestaPasarela.codigoOperacion 
-                           : payloadTemporal.codigoReserva
-          };
-          
-          ejecutarPeticionBackend(payloadFinal);
-        }}
-      />
+    <ModalPago 
+  isOpen={mostrarModalPago}           
+  montoGarantia={precioFijo}         
+  metodoPago={datosForm.metodoPago}   
+  onClose={() => {
+    setMostrarModalPago(false);
+    setPayloadTemporal(null);
+  }}
+  onConfirmar={(respuestaPasarela) => {
+    // 🛡️ Control de seguridad por si el estado asíncrono está vacío
+    if (!payloadTemporal) {
+      alert("Error: Los datos de la reserva no se cargaron correctamente. Inténtalo de nuevo.");
+      setMostrarModalPago(false);
+      return;
+    }
+
+    // Construimos el payload final asegurando la regeneración y consistencia de los datos
+    const payloadFinal = {
+      ...payloadTemporal,
+      // Si la pasarela devolvió un código de transacción real (no los mocks), lo usamos
+      codigoReserva: (respuestaPasarela.codigoOperacion && 
+                      respuestaPasarela.codigoOperacion !== 'EFECTIVO-LOCAL' && 
+                      respuestaPasarela.codigoOperacion !== 'YAPE-MOCK')
+                     ? respuestaPasarela.codigoOperacion 
+                     : generarCodigoReserva(), // 🔄 Regenera un código limpio si era un mock
+      
+      estadoPago: respuestaPasarela.estadoPago ? respuestaPasarela.estadoPago.toLowerCase() : 'pendiente'
+    };
+    
+    // Enviamos el objeto completamente estructurado al backend sin campos corruptos
+    ejecutarPeticionBackend(payloadFinal);
+  }}
+/>
+
    )}
     </div>
   );

@@ -1,7 +1,10 @@
 package com.example.panchita_api.controller;
 
 import com.example.panchita_api.model.Mesa;
+import com.example.panchita_api.model.Reserva;
 import com.example.panchita_api.repository.MesaRepository;
+import com.example.panchita_api.repository.ReservaRepository;
+import com.example.panchita_api.repository.SalaRepository; // 1. Importa el repositorio
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -18,40 +21,51 @@ import java.util.stream.Collectors;
 public class MesaController {
 
     @Autowired
-    private MesaRepository mesaRepository; // Convención estándar: minúscula al inicio
-    @GetMapping("/disponibilidad")
-    public ResponseEntity<?> obtenerDisponibilidad(
-            @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam("hora") @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora) {
-        
-        try {
-            // 1. Traer todas las mesas
-            List<Mesa> todasLasMesas = mesaRepository.findAll();
+    private MesaRepository mesaRepository;
 
-            // 2. Traer IDs de mesas ocupadas (asegúrate de tener este método en MesaRepository)
-            List<Integer> idsOcupados = mesaRepository.findReservasPorFechaYHora(fecha, hora);
+    @Autowired 
+    private SalaRepository salaRepository; 
+    
+    @Autowired
+    private ReservaRepository reservaRepository;
+    
+@GetMapping("/disponibilidad")
+public ResponseEntity<?> obtenerDisponibilidad(
+        @RequestParam("fecha") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+        @RequestParam("hora") @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora) {
+    
+    try {
+        List<Mesa> todasLasMesas = mesaRepository.findAll();
+        // Traemos todas las reservas de esa fecha
+List<Reserva> reservasDelDia = reservaRepository.findByFecha(fecha);
+        List<Mesa> mesasMapeadas = todasLasMesas.stream().map(mesa -> {
+            // Lógica: La mesa está ocupada si hay una reserva en esa fecha y la hora coincide
+            boolean estaOcupada = reservasDelDia.stream()
+                .anyMatch(r -> r.getMesa().getId().equals(mesa.getId()) && r.getHora().equals(hora));
+            
+            mesa.setEstado(estaOcupada ? "ocupada" : "disponible");
+            return mesa;
+        }).collect(Collectors.toList());
 
-            // 3. Mapeo dinámico: No cambia la DB, solo el estado en la respuesta JSON
-            List<Mesa> mesasMapeadas = todasLasMesas.stream().map(mesa -> {
-                if (idsOcupados.contains(mesa.getId())) {
-                    mesa.setEstado("ocupada");
-                } else {
-                    mesa.setEstado("disponible");
-                }
-                return mesa;
-            }).collect(Collectors.toList());
-
-            return ResponseEntity.ok(mesasMapeadas);
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error al calcular disponibilidad: " + e.getMessage());
-        }
+        return ResponseEntity.ok(mesasMapeadas);
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
     }
+}
 
-    // 🚀 Obtener todas las mesas sin filtros (Estado base)
+    // 🚀 Obtener todas las mesas con información de Sala cargada
     @GetMapping
     public ResponseEntity<List<Mesa>> obtenerMesas() {
-        return ResponseEntity.ok(mesaRepository.findAll());
+        List<Mesa> mesas = mesaRepository.findAll();
+        
+        // 3. Forzamos la carga de la relación para evitar errores de proxy
+        mesas.forEach(mesa -> {
+            if (mesa.getSala() != null) {
+                mesa.getSala().getNombre(); 
+            }
+        });
+        
+        return ResponseEntity.ok(mesas);
     }
 
     // 🛠️ Crear nueva mesa

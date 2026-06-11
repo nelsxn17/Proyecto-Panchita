@@ -1,21 +1,21 @@
 .admin-dashboard-container {
   display: flex;
   min-height: 100vh;
-  background-color: #fdfbf9; /* Un blanco roto ultra-limpio con calidez mínima */
-  color: #3e3129; /* Texto principal oscuro y altamente legible */
+  background-color: #fdfbf9;
+  color: #3e3129;
   font-family: 'Lato', sans-serif;
 }
 
-/* SIDEBAR - MANTIENE LA IDENTIDAD CORPORATIVA OSCURA DE PANCHITA */
+/* ── SIDEBAR ─────────────────────────────────────────────────────────────── */
 .admin-sidebar {
   width: 260px;
-  background-color: #1a0f0a; /* Marrón profundo, elegante y ejecutivo */
+  background-color: #1a0f0a;
   border-right: none;
   display: flex;
   flex-direction: column;
   padding: 25px 15px;
   box-sizing: border-box;
-  box-shadow: 4px 0 25px rgba(26, 15, 10, 0.05); /* Sombra suave hacia la derecha */
+  box-shadow: 4px 0 25px rgba(26, 15, 10, 0.05);
 }
 
 .sidebar-brand-box {
@@ -30,7 +30,7 @@
 
 .sidebar-brand-box h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  color: #e5a952; /* Dorado refinado con mejor contraste */
+  color: #e5a952;
   margin: 0;
   font-size: 1.8rem;
   letter-spacing: 0.5px;
@@ -50,11 +50,10 @@
   flex-grow: 1;
 }
 
-/* MENÚ DEL SIDEBAR ACCESIBLE */
 .menu-item {
   background-color: transparent;
   border: 1px solid transparent;
-  color: #dcd1c4; /* Texto claro para resaltar sobre el fondo oscuro */
+  color: #dcd1c4;
   text-align: left;
   padding: 12px 16px;
   font-size: 0.9rem;
@@ -64,16 +63,16 @@
   transition: all 0.25s ease;
 }
 
-.menu-item:hover, .menu-item.active {
-  background: linear-gradient(90deg, rgba(229, 169, 82, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%);
+.menu-item:hover,
+.menu-item.active {
+  background: linear-gradient(90deg, rgba(229, 169, 82, 0.15) 0%, rgba(255,255,255,0.02) 100%);
   border-color: #e5a952;
   color: #fff;
   padding-left: 20px;
 }
 
-/* BOTONES DESHABILITADOS SUTILES */
 .menu-item.disabled-tab {
-  opacity: 0.3; /* Más transparente para que no compita con el Panel General */
+  opacity: 0.3;
   cursor: not-allowed;
   border-color: transparent;
 }
@@ -102,32 +101,85 @@
   color: #fff;
 }
 
-/* ÁREA DE CONTENIDO PRINCIPAL */
+/* ── MAIN ────────────────────────────────────────────────────────────────── */
 .admin-main-content {
   flex-grow: 1;
   padding: 40px;
   box-sizing: border-box;
 }
 
+/* ── HEADER con fila superior (título + última actualización) ────────────── */
+.view-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .view-header h1 {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 2.4rem;
-  color: #1a0f0a; /* Título oscuro potente */
+  color: #1a0f0a;
   margin: 0 0 6px 0;
 }
 
 .view-header p {
-  color: #705e52; /* Subtítulo sutil y legible */
+  color: #705e52;
   margin: 0 0 35px 0;
   font-size: 0.95rem;
 }
 
 .highlight-text {
-  color: #bc5a1a; /* Naranja/marrón quemado elegante */
+  color: #bc5a1a;
   font-weight: 700;
 }
 
-/* REJILLA DE TARJETAS FLOTANTES PREMIUM */
+/* MEJORA 1 — Última actualización */
+.ultima-actualizacion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #8c735c;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+
+.dot-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #2e7d32;
+  animation: pulse-dot 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(1.25); }
+}
+
+.btn-refresh {
+  background: transparent;
+  border: 1px solid #d3c4b4;
+  color: #8c735c;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 7px;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+  background: #f1ece7;
+  color: #bc5a1a;
+  border-color: #bc5a1a;
+}
+
+/* ── MÉTRICAS ────────────────────────────────────────────────────────────── */
 .metrics-row-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -136,16 +188,16 @@
 }
 
 .metric-card-premium {
-  background-color: #ffffff; /* Tarjetas blancas limpias */
-  border: 1px solid rgba(26, 15, 10, 0.04); /* Sin bordes rígidos */
+  background-color: #ffffff;
+  border: 1px solid rgba(26, 15, 10, 0.04);
   border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 10px 30px rgba(26, 15, 10, 0.04); /* Efecto de suspensión en el aire */
+  box-shadow: 0 10px 30px rgba(26, 15, 10, 0.04);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .metric-card-premium:hover {
-  transform: translateY(-4px); /* Pequeña animación interactiva al pasar el mouse */
+  transform: translateY(-4px);
   box-shadow: 0 15px 35px rgba(26, 15, 10, 0.08);
 }
 
@@ -163,25 +215,49 @@
 .metric-card-premium h2 {
   font-size: 2.3rem;
   font-weight: 800;
-  color: #1a0f0a; /* Números imponentes y oscuros */
+  color: #1a0f0a;
   margin: 0 0 6px 0;
   letter-spacing: -0.5px;
 }
 
 .metric-card-premium p {
   font-size: 0.8rem;
-  color: #64748b; /* Gris slate para textos secundarios */
+  color: #64748b;
   opacity: 0.9;
-  margin: 0;
+  margin: 0 0 8px 0;
 }
 
-/* ALERTAS Y TENDENCIAS */
-.trend-positive { color: #2e7d32; font-weight: 600; } /* Verde éxito real */
-.trend-neutral { color: #64748b; font-weight: 600; }
+/* MEJORA 2 — Comparativa vs. ayer */
+.tendencia {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.tend-pos {
+  background-color: #f0faf0;
+  color: #2e7d32;
+}
+
+.tend-neg {
+  background-color: #fff5f5;
+  color: #d32f2f;
+}
+
+.tend-neutral {
+  background-color: #f5f5f5;
+  color: #64748b;
+}
+
+/* ── BADGES Y TENDENCIAS ─────────────────────────────────────────────────── */
+.trend-positive { color: #2e7d32; font-weight: 600; }
+.trend-neutral  { color: #64748b; font-weight: 600; }
 
 .badge-live {
   background-color: #fff3e0;
-  color: #e65100; /* Naranja enérgico */
+  color: #e65100;
   padding: 2px 10px;
   border-radius: 20px;
   font-weight: 700;
@@ -189,17 +265,18 @@
   border: 1px solid rgba(230, 81, 0, 0.2);
 }
 
-/* DISEÑO DE DOS COLUMNAS INFERIORES */
+/* ── LAYOUT INFERIOR ─────────────────────────────────────────────────────── */
 .dashboard-double-layout {
-display: flex !important; /* Forzamos flex */
-  flex-direction: row !important; /* Forzamos horizontal */
+  display: flex !important;
+  flex-direction: row !important;
   width: 100% !important;
   gap: 25px;
-  align-items: flex-start; /* Evita que las cajas se estiren innecesariamente */
+  align-items: flex-start;
 }
 
-.analytics-main-box, .live-feed-box {
-  background-color: #ffffff; /* Cajas de analíticas limpias */
+.analytics-main-box,
+.live-feed-box {
+  background-color: #ffffff;
   border: 1px solid rgba(26, 15, 10, 0.04);
   border-radius: 14px;
   padding: 24px;
@@ -207,108 +284,274 @@ display: flex !important; /* Forzamos flex */
 }
 
 .analytics-main-box { flex: 1.8; }
-.live-feed-box { flex: 1.2; }
+.live-feed-box       { flex: 1.2; }
 
-.analytics-main-box h3, .live-feed-box h3 {
-  margin: 0 0 25px 0;
+.analytics-main-box h3,
+.live-feed-box h3 {
+  margin: 0 0 18px 0;
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.3rem;
   color: #1a0f0a;
   font-weight: 700;
 }
 
-/* REDISEÑO DEL GRÁFICO DE BARRAS DINÁMICO */
-.simulated-chart-container {
+/* ── MEJORA 3 — Capacidad con alerta de color ────────────────────────────── */
+.salon-capacity-container {
+  padding: 4px 0 6px;
+}
+
+.capacity-row {
   display: flex;
-  align-items: flex-end;
   justify-content: space-between;
-  height: 220px;
-  padding: 0 10px;
-  border-bottom: 2px solid #f1ece7; /* Línea de base limpia */
-  background-image: linear-gradient(rgba(26, 15, 10, 0.02) 1px, transparent 1px); /* Líneas de cuadrícula guía */
-  background-size: 100% 40px; 
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.chart-bar-item {
-  width: 9%;
-  height: var(--height);
-  background-color: #f1ece7; /* Barras vacías discretas */
-  border-radius: 6px 6px 0 0; /* Curvatura superior */
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chart-bar-item:hover, .chart-bar-item.chart-bar-item--active {
-  background: linear-gradient(to top, #bc5a1a 0%, #e65100 100%); /* Degradado cálido vivo */
-  box-shadow: 0 6px 18px rgba(230, 81, 0, 0.3);
-}
-
-.chart-bar-item span {
-  position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.75rem;
+.capacity-label {
+  font-size: 0.85rem;
   color: #705e52;
   font-weight: 600;
 }
 
-/* MONITOREO DE ACTIVIDAD FEED (EN VIVO) */
-.feed-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.capacity-count {
+  font-size: 1.15rem;
+  color: #1a0f0a;
 }
 
-.feed-item {
-  padding: 14px;
-  background-color: #faf8f5; /* Fondo de ítem sutil */
-  border-left: 4px solid #64748b;
-  border-radius: 4px 8px 8px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: transform 0.2s ease;
+.progress-track {
+  width: 100%;
+  height: 14px;
+  background-color: #f1ece7;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
 }
 
-.feed-item:hover {
+.progress-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.4s ease;
+}
+
+/* Alerta cuando el salón supera 90% */
+.alerta-capacidad {
+  background-color: #fff5f5;
+  border: 1px solid rgba(211, 47, 47, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: #d32f2f;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.capacity-legend {
+  display: flex;
+  gap: 20px;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.capacity-legend strong {
+  color: #1a0f0a;
+}
+
+/* ── MEJORA 4 — Próximas reservas ────────────────────────────────────────── */
+.reservas-vacias {
+  font-size: 0.85rem;
+  color: #8c735c;
+  font-style: italic;
+  margin: 0;
+}
+
+.proximas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proxima-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: #faf8f5;
+  border-radius: 8px;
+  border: 1px solid rgba(26, 15, 10, 0.05);
+  transition: transform 0.15s ease;
+}
+
+.proxima-item:hover {
   transform: translateX(3px);
 }
 
-.feed-time {
-  font-size: 0.7rem;
-  color: #8c735c;
+.proxima-hora {
+  font-size: 0.9rem;
   font-weight: 700;
-  text-transform: uppercase;
+  color: #bc5a1a;
+  min-width: 44px;
 }
 
-.feed-item p {
-  margin: 0;
-  font-size: 0.88rem;
-  color: #4a3b32; /* Texto oscuro suave para los feeds */
+.proxima-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* COLORES ENERGÉTICOS PARA LOS ESTADOS EN VIVO */
-.feed-item.alert-orange { border-left-color: #e65100; background-color: #fff8f5; }
-.feed-item.alert-green { border-left-color: #2e7d32; background-color: #f4faf4; }
-.feed-item.alert-gold { border-left-color: #bc5a1a; background-color: #fdf8f5; }
-.feed-item.alert-red { border-left-color: #d32f2f; background-color: #fff5f5; }
+.proxima-nombre {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a0f0a;
+}
 
-/* ANIMACIÓN DE ENTRADA SUAVE */
+.proxima-personas {
+  font-size: 0.75rem;
+  color: #8c735c;
+}
+
+.proxima-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.badge-confirmada {
+  background-color: #f0faf0;
+  color: #2e7d32;
+}
+
+.badge-pendiente {
+  background-color: #fff8f0;
+  color: #e65100;
+}
+
+/* ── ANIMACIÓN DE ENTRADA ────────────────────────────────────────────────── */
 .dashboard-view-fade {
   animation: viewFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes viewFadeIn {
   from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
-/* Opcional: Esto hace que las barras de Recharts se vean más "Panchita" */
+.loading-sketches {
+  padding: 40px 0;
+  color: #8c735c;
+  font-style: italic;
+}
+
 .recharts-bar-rectangle {
   transition: all 0.3s ease;
 }
+
 .recharts-bar-rectangle:hover {
   filter: brightness(1.2);
   cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NOTIFICACIONES PUSH — TOASTS
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Stack fijo en la esquina superior derecha */
+.notif-stack {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  width: 100%;
+  pointer-events: none; /* el stack no bloquea clics */
+}
+
+/* Cada toast */
+.notif-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-left: 4px solid transparent;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(26, 15, 10, 0.14);
+  pointer-events: all;
+  animation: toastEntrada 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+             toastSalida  0.3s  cubic-bezier(0.4, 0, 1, 1) 5.7s forwards;
+}
+
+@keyframes toastEntrada {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes toastSalida {
+  from { opacity: 1; transform: translateX(0);    }
+  to   { opacity: 0; transform: translateX(30px); }
+}
+
+/* Colores por tipo */
+.notif-reserva  { border-left-color: #e65100; }
+.notif-mesa     { border-left-color: #d32f2f; }
+.notif-ingresos { border-left-color: #bc5a1a; }
+
+.notif-contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notif-titulo {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1a0f0a;
+}
+
+.notif-mensaje {
+  font-size: 0.78rem;
+  color: #705e52;
+  line-height: 1.4;
+}
+
+.notif-cerrar {
+  background: transparent;
+  border: none;
+  color: #8c735c;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: color 0.15s;
+}
+
+.notif-cerrar:hover {
+  color: #1a0f0a;
+}
+
+.sidebar-notif-badge {
+  background: rgba(230, 81, 0, 0.12);
+  border: 1px solid rgba(230, 81, 0, 0.3);
+  color: #ff7043;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 10px;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.7; }
 }
