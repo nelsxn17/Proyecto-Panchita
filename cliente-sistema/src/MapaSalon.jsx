@@ -1,106 +1,143 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './MapaSalon.css';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 const ESTADOS = {
-  LIBRE:     { label: 'Libre',     clase: 'mesa-libre',     icono: '○' },
-  OCUPADA:   { label: 'Ocupada',   clase: 'mesa-ocupada',   icono: '●' },
-  RESERVADA: { label: 'Reservada', clase: 'mesa-reservada', icono: '◑' },
-  BLOQUEADA: { label: 'Bloqueada', clase: 'mesa-bloqueada', icono: '✕' },
+  disponible: { label: 'Disponible', clase: 'mesa-libre',     icono: '○' },
+  ocupada:    { label: 'Ocupada',    clase: 'mesa-ocupada',   icono: '●' },
+  reservada:  { label: 'Reservada',  clase: 'mesa-reservada', icono: '◑' },
+  bloqueada:  { label: 'Bloqueada',  clase: 'mesa-bloqueada', icono: '✕' },
 };
-
 const normalizarEstado = (estado) => {
-  if (!estado) return 'LIBRE';
-  const e = estado.toUpperCase();
-  if (e === 'OCUPADA' || e === 'OCUPADO') return 'OCUPADA';
-  if (e === 'RESERVADA' || e === 'RESERVADO') return 'RESERVADA';
-  if (e === 'BLOQUEADA' || e === 'BLOQUEADO') return 'BLOQUEADA';
-  return 'LIBRE';
+  if (!estado) return 'disponible';
+  const e = estado.toLowerCase();
+  return ESTADOS[e] ? e : 'disponible';
 };
 
 const minutosOcupada = (fechaOcupacion) => {
   if (!fechaOcupacion) return null;
-  const diff = Date.now() - new Date(fechaOcupacion).getTime();
-  return Math.floor(diff / 60000);
+  return Math.floor((Date.now() - new Date(fechaOcupacion).getTime()) / 60000);
+};
+
+// Normaliza el nombre de sala para comparar sin importar tildes ni mayúsculas
+const normalizarSala = (nombre) => {
+  if (!nombre) return '';
+  return nombre.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
+};
+
+const SALAS_CONFIG = {
+  principal: { label: 'Sala Principal', icono: '🏠', color: 'sala-principal' },
+  terraza:   { label: 'Terraza',        icono: '☀️',  color: 'sala-terraza'   },
 };
 
 // ─── Componente principal ────────────────────────────────────────────────────
-
 export default function MapaSalon({ onAlerta }) {
-  const [mesas, setMesas]         = useState([]);
-  const [cargando, setCargando]   = useState(true);
-  const [mesaActiva, setMesaActiva] = useState(null); // mesa seleccionada para modal
-  const [filtro, setFiltro]       = useState('TODAS');
+  const [mesas, setMesas]           = useState([]);
+  const [cargando, setCargando]     = useState(true);
+  const [mesaActiva, setMesaActiva] = useState(null);
+  const [filtro, setFiltro]         = useState('TODAS');
+  const [salaActiva, setSalaActiva] = useState('todas'); // 'todas' | 'principal' | 'terraza'
 
-const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-const [hora, setHora] = useState(new Date().toTimeString().split(':').slice(0, 2).join(':'));
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [hora, setHora]   = useState(new Date().toTimeString().split(':').slice(0, 2).join(':'));
 
-const cargarMesas = useCallback(() => {
-    // 2. Apunta a tu endpoint /disponibilidad y pasa los parámetros
+  const cargarMesas = useCallback(() => {
+    setCargando(true);
     fetch(`http://localhost:8080/api/mesas/disponibilidad?fecha=${fecha}&hora=${hora}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setMesas(Array.isArray(data) ? data : []);
-        setCargando(false);
-      })
+      .then(r => r.json())
+      .then(data => { setMesas(Array.isArray(data) ? data : []); setCargando(false); })
       .catch(() => setCargando(false));
-  }, [fecha, hora, onAlerta]); // 3. IMPORTANTE: agrega fecha y hora como dependencias
+  }, [fecha, hora]);
 
+  useEffect(() => { cargarMesas(); }, [cargarMesas]);
+
+  // Auto-refresh cada 60 segundos
   useEffect(() => {
-    cargarMesas();
-  }, [cargarMesas]); // Se recargará automáticamente al cambiar fecha u hora
+    const interval = setInterval(cargarMesas, 60000);
+    return () => clearInterval(interval);
+  }, [cargarMesas]);
 
-  const mesasFiltradas = filtro === 'TODAS'
-    ? mesas
-    : mesas.filter((m) => normalizarEstado(m.estado) === filtro);
+  // ── Filtrado ──────────────────────────────────────────────────────────────
+  const mesasFiltradas = mesas.filter(m => {
+    const matchEstado = filtro === 'TODAS' || normalizarEstado(m.estado) === filtro;
+    const salaKey     = normalizarSala(m.salaNombre || '');
+    const matchSala   = salaActiva === 'todas' || salaKey === salaActiva;
+    return matchEstado && matchSala;
+  });
+
+const mesasPorSala = {
+  principal: mesasFiltradas.filter(m => 
+    normalizarSala(m.salaNombre) === 'principal' || m.sala_id === 1
+  ),
+  terraza: mesasFiltradas.filter(m => 
+    normalizarSala(m.salaNombre) === 'Terraza' || m.sala_id === 2
+  ),
+  otras: mesasFiltradas.filter(m => {
+    const s = normalizarSala(m.salaNombre || '');
+    return s !== 'principal' && s !== 'Terraza';
+  }),
+};
 
   const conteo = {
-    LIBRE:     mesas.filter((m) => normalizarEstado(m.estado) === 'LIBRE').length,
-    OCUPADA:   mesas.filter((m) => normalizarEstado(m.estado) === 'OCUPADA').length,
-    RESERVADA: mesas.filter((m) => normalizarEstado(m.estado) === 'RESERVADA').length,
-    BLOQUEADA: mesas.filter((m) => normalizarEstado(m.estado) === 'BLOQUEADA').length,
+    LIBRE:     mesas.filter(m => normalizarEstado(m.estado) === 'LIBRE').length,
+    OCUPADA:   mesas.filter(m => normalizarEstado(m.estado) === 'OCUPADA').length,
+    RESERVADA: mesas.filter(m => normalizarEstado(m.estado) === 'RESERVADA').length,
+    BLOQUEADA: mesas.filter(m => normalizarEstado(m.estado) === 'BLOQUEADA').length,
+  };
+
+  // ── Marcar "Asistió" desde Reservas → pone mesa en OCUPADA ───────────────
+  const marcarMesaOcupada = (mesaId) => {
+    fetch(`http://localhost:8080/api/mesas/${mesaId}/estado`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'OCUPADA' }),
+    }).then(() => cargarMesas()).catch(console.error);
   };
 
   return (
     <div className="mapa-salon-container">
+
       {/* ── Header ── */}
-     <div className="mapa-header">
-  <div>
-    <h1 className="mapa-titulo">Mapa del Salón</h1>
-    <p className="mapa-subtitulo">
-      Vista en tiempo real · {mesas.length} mesas en total
-    </p>
-  </div>
+      <div className="mapa-header">
+        <div>
+          <h1 className="mapa-titulo">Mapa del Salón</h1>
+          <p className="mapa-subtitulo">Vista en tiempo real · {mesas.length} mesas en total</p>
+        </div>
+        <div className="mapa-filtros-tiempo">
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="input-tiempo" />
+          <input type="time" value={hora}  onChange={e => setHora(e.target.value)}  className="input-tiempo" />
+        </div>
+        <button className="btn-refresh-mapa" onClick={cargarMesas} title="Actualizar mapa">
+          ↻ Actualizar
+        </button>
+      </div>
 
-  {/* ── Nuevos selectores de tiempo ── */}
-  <div className="mapa-filtros-tiempo">
-    <input 
-      type="date" 
-      value={fecha} 
-      onChange={(e) => setFecha(e.target.value)} 
-      className="input-tiempo"
-    />
-    <input 
-      type="time" 
-      value={hora} 
-      onChange={(e) => setHora(e.target.value)} 
-      className="input-tiempo"
-    />
-  </div>
+      {/* ── Tabs de sala ── */}
+      <div className="sala-tabs">
+        {[
+          { key: 'todas',     label: '🏢 Todas las salas', count: mesas.length },
+          { key: 'principal', label: '🏠 Sala Principal',  count: mesas.filter(m => normalizarSala(m.salaNombre || '') === 'principal').length },
+          { key: 'terraza',   label: '☀️ Terraza',         count: mesas.filter(m => normalizarSala(m.salaNombre || '') === 'terraza').length },
+        ].map(({ key, label, count }) => (
+          <button
+            key={key}
+            className={`sala-tab ${salaActiva === key ? 'sala-tab-activa' : ''}`}
+            onClick={() => setSalaActiva(key)}
+          >
+            {label} <span className="sala-tab-count">{count}</span>
+          </button>
+        ))}
+      </div>
 
-  <button className="btn-refresh-mapa" onClick={cargarMesas} title="Actualizar mapa">
-    ↻ Actualizar
-  </button>
-</div>
-
-      {/* ── Leyenda / filtros ── */}
+      {/* ── Filtros de estado ── */}
       <div className="mapa-filtros">
         {[
-          { key: 'TODAS',     label: 'Todas',     count: mesas.length },
-          { key: 'LIBRE',     label: 'Libres',    count: conteo.LIBRE },
-          { key: 'OCUPADA',   label: 'Ocupadas',  count: conteo.OCUPADA },
-          { key: 'RESERVADA', label: 'Reservadas',count: conteo.RESERVADA },
-          { key: 'BLOQUEADA', label: 'Bloqueadas',count: conteo.BLOQUEADA },
+          { key: 'TODAS',     label: 'Todas',      count: mesas.length },
+          { key: 'LIBRE',     label: 'Libres',     count: conteo.LIBRE },
+          { key: 'OCUPADA',   label: 'Ocupadas',   count: conteo.OCUPADA },
+          { key: 'RESERVADA', label: 'Reservadas', count: conteo.RESERVADA },
+          { key: 'BLOQUEADA', label: 'Bloqueadas', count: conteo.BLOQUEADA },
         ].map(({ key, label, count }) => (
           <button
             key={key}
@@ -119,35 +156,43 @@ const cargarMesas = useCallback(() => {
         <div className="mapa-cargando">Cargando mapa del salón...</div>
       ) : mesas.length === 0 ? (
         <div className="mapa-vacio">No se encontraron mesas registradas.</div>
+      ) : salaActiva === 'todas' ? (
+        // Vista todas: separadas por sección
+        <>
+          {mesasPorSala.principal.length > 0 && (
+            <SeccionSala
+              titulo="🏠 Sala Principal"
+              colorClass="sala-principal"
+              mesas={mesasPorSala.principal}
+              onSeleccionar={setMesaActiva}
+            />
+          )}
+          {mesasPorSala.terraza.length > 0 && (
+            <SeccionSala
+              titulo="☀️ Terraza"
+              colorClass="sala-terraza"
+              mesas={mesasPorSala.terraza}
+              onSeleccionar={setMesaActiva}
+            />
+          )}
+          {mesasPorSala.otras.length > 0 && (
+            <SeccionSala
+              titulo="📍 Otras"
+              colorClass=""
+              mesas={mesasPorSala.otras}
+              onSeleccionar={setMesaActiva}
+            />
+          )}
+        </>
       ) : (
+        // Vista filtrada por sala
         <div className="mesas-grid">
-          {mesasFiltradas.map((mesa) => {
-            const estadoKey = normalizarEstado(mesa.estado);
-            const cfg       = ESTADOS[estadoKey];
-            const mins      = minutosOcupada(mesa.fechaOcupacion);
-            const urgente   = estadoKey === 'OCUPADA' && mins !== null && mins >= 90;
-
-            return (
-              <button
-                key={mesa.id}
-                className={`mesa-card ${cfg.clase} ${urgente ? 'mesa-urgente' : ''}`}
-                onClick={() => setMesaActiva(mesa)}
-                title={`Mesa ${mesa.numero} — ${cfg.label}`}
-              >
-                <span className="mesa-icono">{cfg.icono}</span>
-                <span className="mesa-numero">Mesa {mesa.numero}</span>
-                <span className="mesa-capacidad">
-                  {mesa.capacidad ? `${mesa.capacidad} personas` : ''}
-                </span>
-                <span className={`mesa-estado-label estado-${estadoKey.toLowerCase()}`}>
-                  {cfg.label}
-                </span>
-                {urgente && (
-                  <span className="mesa-alerta-badge">+{mins}min</span>
-                )}
-              </button>
-            );
-          })}
+          {mesasFiltradas.length === 0
+            ? <p className="mapa-vacio">No hay mesas con ese filtro.</p>
+            : mesasFiltradas.map(mesa => (
+                <TarjetaMesa key={mesa.id} mesa={mesa} onSeleccionar={setMesaActiva} />
+              ))
+          }
         </div>
       )}
 
@@ -157,33 +202,113 @@ const cargarMesas = useCallback(() => {
           mesa={mesaActiva}
           onCerrar={() => setMesaActiva(null)}
           onActualizar={cargarMesas}
+          onMarcarOcupada={marcarMesaOcupada}
         />
       )}
     </div>
   );
 }
 
-// ─── Modal de detalle ────────────────────────────────────────────────────────
+// ─── Sección de sala ─────────────────────────────────────────────────────────
+function SeccionSala({ titulo, colorClass, mesas, onSeleccionar }) {
+  const libres    = mesas.filter(m => normalizarEstado(m.estado) === 'LIBRE').length;
+  const ocupadas  = mesas.filter(m => normalizarEstado(m.estado) === 'OCUPADA').length;
+  const reservadas = mesas.filter(m => normalizarEstado(m.estado) === 'RESERVADA').length;
 
-function ModalMesa({ mesa, onCerrar, onActualizar }) {
+  return (
+    <div className={`seccion-sala ${colorClass}`}>
+      <div className="seccion-sala-header">
+        <h2 className="seccion-sala-titulo">{titulo}</h2>
+        <div className="seccion-sala-stats">
+          <span className="stat-mini stat-libre">🟢 {libres} libres</span>
+          <span className="stat-mini stat-ocupada">🔴 {ocupadas} ocupadas</span>
+          <span className="stat-mini stat-reservada">🟡 {reservadas} reservadas</span>
+        </div>
+      </div>
+      <div className="mesas-grid">
+        {mesas.map(mesa => (
+          <TarjetaMesa key={mesa.id} mesa={mesa} onSeleccionar={onSeleccionar} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tarjeta de mesa ─────────────────────────────────────────────────────────
+function TarjetaMesa({ mesa, onSeleccionar }) {
   const estadoKey = normalizarEstado(mesa.estado);
-  const cfg       = ESTADOS[estadoKey];
+  const cfg = ESTADOS[estadoKey] || ESTADOS.disponible;
   const mins      = minutosOcupada(mesa.fechaOcupacion);
+  const urgente   = estadoKey === 'OCUPADA' && mins !== null && mins >= 90;
+
+  return (
+    <button
+      className={`mesa-card ${cfg.clase} ${urgente ? 'mesa-urgente' : ''}`}
+      onClick={() => onSeleccionar(mesa)}
+      title={`Mesa ${mesa.numero} — ${cfg.label}`}
+    >
+      <span className="mesa-icono">{cfg.icono}</span>
+      <span className="mesa-numero">Mesa {mesa.numero}</span>
+      <span className="mesa-capacidad">{mesa.capacidad ? `${mesa.capacidad} personas` : ''}</span>
+      {mesa.ubicacion && <span className="mesa-ubicacion">{mesa.ubicacion}</span>}
+      <span className={`mesa-estado-label estado-${estadoKey.toLowerCase()}`}>{cfg.label}</span>
+      {estadoKey === 'RESERVADA' && mesa.horaReserva && (
+        <span className="mesa-reserva-hora">⏰ {mesa.horaReserva}</span>
+      )}
+      {estadoKey === 'RESERVADA' && mesa.clienteReserva && (
+        <span className="mesa-reserva-cliente">👤 {mesa.clienteReserva}</span>
+      )}
+      {urgente && <span className="mesa-alerta-badge">+{mins}min</span>}
+    </button>
+  );
+}
+
+// ─── Modal de detalle ────────────────────────────────────────────────────────
+function ModalMesa({ mesa, onCerrar, onActualizar, onMarcarOcupada }) {
+  const estadoKey = normalizarEstado(mesa.estado);
+  const cfg       = ESTADOS[estadoKey] || ESTADOS.LIBRE;
+  const mins      = minutosOcupada(mesa.fechaOcupacion);
+  const salaNombre = mesa.salaNombre || '—';
+  console.log("Mesa recibida en modal:", mesa); 
+  if (!mesa || !mesa.id) {
+    console.error("¡CUIDADO! La mesa no tiene ID");
+  }
 
   const cambiarEstado = (nuevoEstado) => {
     fetch(`http://localhost:8080/api/mesas/${mesa.id}/estado`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: nuevoEstado }),
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: nuevoEstado }),
     })
-      .then((r) => { if (!r.ok) throw new Error(); })
-      .then(() => { onActualizar(); onCerrar(); })
-      .catch(() => alert('No se pudo cambiar el estado de la mesa.'));
+    .then(r => {
+        if (!r.ok) throw new Error('Error en el servidor');
+        return r;
+    })
+    .then(() => {
+        onActualizar(); // <--- ESTO ES CLAVE: Recarga el mapa
+        onCerrar();     // Cierra el modal
+    })
+    .catch(err => console.error("Error al actualizar:", err));
+};
+
+  // Marcar asistió: reserva confirmada → mesa pasa a OCUPADA
+  const confirmarAsistencia = () => {
+    onMarcarOcupada(mesa.id);
+    // También actualizar la reserva asociada si existe
+    if (mesa.reservaId) {
+      fetch(`http://localhost:8080/api/reservas/${mesa.reservaId}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'asistió' }),
+      }).catch(console.error);
+    }
+    onCerrar();
   };
 
   return (
     <div className="modal-overlay" onClick={onCerrar}>
-      <div className="modal-detalle" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-detalle" onClick={e => e.stopPropagation()}>
+
         <div className="modal-header">
           <div>
             <h2 className="modal-titulo">Mesa {mesa.numero}</h2>
@@ -196,13 +321,21 @@ function ModalMesa({ mesa, onCerrar, onActualizar }) {
 
         <div className="modal-body">
           <div className="modal-fila">
+            <span className="modal-campo">Sala</span>
+            <span className="modal-valor modal-sala-badge">{salaNombre}</span>
+          </div>
+          <div className="modal-fila">
             <span className="modal-campo">Capacidad</span>
             <span className="modal-valor">{mesa.capacidad || '—'} personas</span>
           </div>
-          <div className="modal-fila">
-            <span className="modal-campo">Zona / Sala</span>
-            <span className="modal-valor">{mesa.sala ? mesa.sala.nombre : (mesa.ubicacion || '—')}</span>
-          </div>
+          {mesa.ubicacion && (
+            <div className="modal-fila">
+              <span className="modal-campo">Ubicación</span>
+              <span className="modal-valor">{mesa.ubicacion}</span>
+            </div>
+          )}
+
+          {/* Info cuando está OCUPADA */}
           {estadoKey === 'OCUPADA' && (
             <>
               <div className="modal-fila">
@@ -218,6 +351,8 @@ function ModalMesa({ mesa, onCerrar, onActualizar }) {
               </div>
             </>
           )}
+
+          {/* Info cuando está RESERVADA */}
           {estadoKey === 'RESERVADA' && (
             <>
               <div className="modal-fila">
@@ -228,26 +363,37 @@ function ModalMesa({ mesa, onCerrar, onActualizar }) {
                 <span className="modal-campo">Hora de reserva</span>
                 <span className="modal-valor">{mesa.horaReserva || '—'}</span>
               </div>
+              <div className="modal-fila">
+                <span className="modal-campo">Código reserva</span>
+                <span className="modal-valor">{mesa.codigoReserva || '—'}</span>
+              </div>
+              {/* Botón especial: cliente llegó */}
+              <button className="btn-asistio" onClick={confirmarAsistencia}>
+                ✅ Cliente llegó — marcar como Ocupada
+              </button>
             </>
           )}
         </div>
 
-        <div className="modal-acciones">
-          <p className="modal-acciones-titulo">Cambiar estado:</p>
-          <div className="modal-acciones-grid">
-            {Object.entries(ESTADOS)
-              .filter(([key]) => key !== estadoKey)
-              .map(([key, val]) => (
-                <button
-                  key={key}
-                  className={`btn-estado btn-estado-${key.toLowerCase()}`}
-                  onClick={() => cambiarEstado(key)}
-                >
-                  {val.icono} {val.label}
-                </button>
-              ))}
-          </div>
-        </div>
+        {/* Cambiar estado */}
+<div className="modal-acciones">
+  <p className="modal-acciones-titulo">Cambiar estado:</p>
+  <div className="modal-acciones-grid">
+    {Object.entries(ESTADOS)
+      // Filtramos para no mostrar el botón del estado en el que ya está la mesa
+      .filter(([key]) => key !== estadoKey)
+      .map(([key, val]) => (
+        <button
+          key={key}
+          className={`btn-estado btn-estado-${key.toLowerCase()}`}
+          onClick={() => cambiarEstado(key)} 
+        >
+          {val.icono} {val.label}
+        </button>
+      ))}
+  </div>
+</div>
+
       </div>
     </div>
   );

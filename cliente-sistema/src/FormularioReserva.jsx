@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // 👈 Añadido useEffect para la carga dinámica
+import React, { useState, useEffect } from 'react'; 
 import './FormularioReserva.css';
 import ModalPago from './ModalPago'; 
 
@@ -388,7 +388,6 @@ const procesarEnvioReserva = (e) => {
       estadoPago: respuestaPasarela.estadoPago ? respuestaPasarela.estadoPago.toLowerCase() : 'pendiente'
     };
     
-    // Enviamos el objeto completamente estructurado al backend sin campos corruptos
     ejecutarPeticionBackend(payloadFinal);
   }}
 />

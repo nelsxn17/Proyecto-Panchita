@@ -1,5 +1,6 @@
 package com.example.panchita_api.controller;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,17 +21,10 @@ public class MapaSalonController {
     @PersistenceContext
     private EntityManager entityManager;
 
-    /**
-     * GET /api/admin/mesas-detalle
-     * Devuelve todas las mesas con su estado actual y datos enriquecidos
-     * para el mapa del salón.
-     */
     @GetMapping("/mesas-detalle")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> getMesasDetalle() {
         try {
-            // Traer todas las mesas con columnas enriquecidas.
-            // Ajusta los nombres de columna si difieren en tu BD.
             List<Object[]> filas = entityManager.createNativeQuery(
                 "SELECT m.id, m.numero, m.capacidad, m.estado, m.zona, " +
                 "m.fecha_ocupacion, " +
@@ -65,10 +59,6 @@ public class MapaSalonController {
         }
     }
 
-    /**
-     * Para cada mesa con estado RESERVADA, busca la reserva activa más próxima
-     * y adjunta nombre del cliente y hora.
-     */
     @SuppressWarnings("unchecked")
     private void enrichReservaData(List<Map<String, Object>> mesas) {
         LocalDate hoy = LocalDate.now();
@@ -97,12 +87,6 @@ public class MapaSalonController {
             }
         }
     }
-
-    /**
-     * GET /api/admin/promedio-ingresos-semana
-     * Devuelve el promedio diario de ingresos de los últimos 7 días
-     * (excluyendo hoy) para comparar con el día actual.
-     */
     @GetMapping("/promedio-ingresos-semana")
     public ResponseEntity<?> getPromedioIngresosSemana() {
         try {
@@ -144,6 +128,31 @@ public class MapaSalonController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error al calcular promedio: " + e.getMessage());
+        }
+    }
+
+@PutMapping("/mesas/{id}/estado")
+    @Transactional // <--- ESTO ES LO QUE SOLUCIONA EL ERROR 500
+    public ResponseEntity<?> cambiarEstadoMesa(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        try {
+            String nuevoEstado = request.get("estado");
+            
+            if (nuevoEstado == null) return ResponseEntity.badRequest().body("Estado requerido");
+
+            int actualizadas = entityManager.createNativeQuery(
+                "UPDATE mesas SET estado = :estado WHERE id = :id"
+            )
+            .setParameter("estado", nuevoEstado.toUpperCase())
+            .setParameter("id", id)
+            .executeUpdate();
+
+            return actualizadas > 0 
+                ? ResponseEntity.ok("Actualizado") 
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                
+        } catch (Exception e) {
+            e.printStackTrace(); // Aquí verás el detalle si vuelve a fallar
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 }
