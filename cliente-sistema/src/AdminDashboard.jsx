@@ -7,6 +7,7 @@ import { useNotificaciones } from './Usenotificaciones.js';  // ← NUEVO
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import GestionDelivery from './Gestiondelibery';
 import NuestraCarta from './NuestraCarta.jsx';
+import GestionEstacionamiento from './GestionEstacionamiento';
 
 
 export default function AdminDashboard({ usuarioLogueado, onLogout }) {
@@ -195,6 +196,12 @@ export default function AdminDashboard({ usuarioLogueado, onLogout }) {
             🛵 Delivery
           </button>
           <button className="menu-item disabled-tab">📋 Historial</button>
+              <button 
+            className={`menu-item ${seccionActiva === 'estacionamiento' ? 'active' : ''}`}
+            onClick={() => setSeccionActiva('estacionamiento')}
+          >
+            🚗 Estacionamiento
+              </button>
           <button className="menu-item disabled-tab">🚗 Estacionamiento</button>
           <button className={`menu-item ${seccionActiva === 'carta' ? 'active' : ''}`}
             onClick={() => setSeccionActiva('carta')}
@@ -357,6 +364,7 @@ export default function AdminDashboard({ usuarioLogueado, onLogout }) {
           {seccionActiva === 'reservas' && <GestorReservas />}
           {seccionActiva === 'delivery' && <GestionDelivery />}
           {seccionActiva === 'carta' && <NuestraCarta usuarioLogueado={usuarioLogueado}/>}
+          {seccionActiva === 'estacionamiento' && <GestionEstacionamiento />}
 
         </div>
       </main>

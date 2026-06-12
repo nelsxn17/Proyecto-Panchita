@@ -8,12 +8,15 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.time.LocalTime; 
 
 @Repository
 public interface MesaRepository extends JpaRepository<Mesa, Integer> {
 
 // En MesaRepository.java
 // Esto busca cualquier reserva que caiga en la fecha solicitada
-@Query("SELECT r.mesa.id FROM Reserva r WHERE r.fecha = :fecha")
-List<Integer> findIdsMesasReservadasEnFecha(@Param("fecha") LocalDate fecha);
+// En tu repositorio
+@Query("SELECT COUNT(r) > 0 FROM Reserva r WHERE r.mesa.id = :mesaId AND r.fecha = :fecha " +
+       "AND (r.hora BETWEEN :inicio AND :fin)")
+boolean existsByMesaAndRange(Integer mesaId, LocalDate fecha, LocalTime inicio, LocalTime fin);
 }

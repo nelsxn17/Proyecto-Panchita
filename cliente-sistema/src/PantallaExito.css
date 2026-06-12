@@ -1,0 +1,264 @@
+
+.exito-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.exito-overlay--visible {
+  opacity: 1;
+}
+
+/* ─── CARD ─────────────────────────────────────────────── */
+.exito-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2rem 2rem 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  transform: translateY(24px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+  box-shadow: 0 24px 48px rgba(38, 25, 21, 0.14), 0 6px 14px rgba(38, 25, 21, 0.06);
+}
+
+.exito-card--visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* ─── ÍCONO ANIMADO ─────────────────────────────────────── */
+.exito-icono-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.exito-circulo {
+  width: 72px;
+  height: 72px;
+}
+
+.exito-circulo__track {
+  stroke: #e6ded7;
+  stroke-width: 2;
+}
+
+.exito-circulo__fill {
+  stroke: #bc5a1a;
+  stroke-width: 2.5;
+  stroke-dasharray: 157;
+  stroke-dashoffset: 157;
+  stroke-linecap: round;
+  animation: drawCircle 0.55s ease-out 0.2s forwards;
+}
+
+.exito-check {
+  stroke: #bc5a1a;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawCheck 0.3s ease-out 0.7s forwards;
+}
+
+@keyframes drawCircle {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ─── TEXTOS ─────────────────────────────────────────────── */
+.exito-titulo {
+  font-size: 22px;
+  font-weight: 700;
+  color: #261915;
+  margin: 0 0 6px;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+.exito-subtitulo {
+  font-size: 13px;
+  color: #6e5e58;
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+/* ─── CÓDIGO ─────────────────────────────────────────────── */
+.exito-codigo-wrap {
+  background: #fdf5ee;
+  border: 1.5px dashed rgba(188, 90, 26, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.exito-codigo-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #bc5a1a;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+.exito-codigo {
+  font-size: 24px;
+  font-weight: 800;
+  color: #261915;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.06em;
+}
+
+/* ─── RESUMEN ────────────────────────────────────────────── */
+.exito-resumen {
+  background: #fcfaf7;
+  border: 1px solid #e6ded7;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.exito-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 0.5px solid #f0ebe6;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+.exito-fila:last-child {
+  border-bottom: none;
+}
+
+.exito-fila--total {
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.exito-fila__label {
+  font-size: 12px;
+  color: #6e5e58;
+  font-weight: 500;
+}
+
+.exito-fila__valor {
+  font-size: 12px;
+  color: #261915;
+  font-weight: 600;
+}
+
+.exito-precio {
+  font-size: 16px;
+  color: #bc5a1a;
+  font-weight: 700;
+}
+
+/* ─── BADGE ESTADO ───────────────────────────────────────── */
+.exito-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.04em;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+.badge--verde {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.badge--amarillo {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge--azul {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid rgba(3, 105, 161, 0.2);
+}
+
+/* ─── ACCIONES ───────────────────────────────────────────── */
+.exito-acciones {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.btn-descargar-voucher {
+  flex: 1;
+  background: #261915;
+  color: #F5C842;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Poppins', system-ui, sans-serif;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-descargar-voucher:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.btn-descargar-voucher:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-descargar-voucher:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-exito-cerrar {
+  background: transparent;
+  color: #6e5e58;
+  border: 1px solid #e6ded7;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Poppins', system-ui, sans-serif;
+  transition: background 0.15s ease;
+}
+
+.btn-exito-cerrar:hover {
+  background: #f4eee9;
+}
+
+/* ─── NOTA ───────────────────────────────────────────────── */
+.exito-nota {
+  font-size: 11px;
+  color: #a08f88;
+  line-height: 1.5;
+  margin: 0;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
